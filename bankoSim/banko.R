@@ -26,6 +26,8 @@ generateBankoPlate <- function(){
   card
 }
 
+# Simulation of how well the average plate performs
+
 simulateBingo <- function(N){
 # Initialize vector with information about the filling of rows
 numForFirst <- numeric(N) # When have one row been filled
@@ -63,7 +65,7 @@ idxOfRow <- c(numForRowOne, numForRowTwo, numForRowThree)
 # and then use that to find out when the second was found
 numForBingo[i] <- max(idxOfRow)
 numForFirst[i] <- min(idxOfRow)
-numForSecond[i] <- setdiff(idxOfRow, c(numForBingo[i], numForFirst[i]))
+numForSecond[i] <- dplyr::setdiff(idxOfRow, c(numForBingo[i], numForFirst[i]))
 }
 # Gather information from numerical vectors in tibble
 tibble(oneRow = numForFirst, twoRows = numForSecond, bingo = numForBingo)
@@ -92,3 +94,75 @@ ggplot(result, aes(x = twoRows)) +
 
 mean(result$twoRows)
 
+# Simulate games of bingo with one winner and looks of distribution of winner
+gameNum <- 200 # Number of games 
+
+numForFirstWin <- numeric(gameNum) # When have one row been filled winner
+numForSecondWin <- numeric(gameNum) # When are two rows filled winner
+numForBingoWin <- numeric(gameNum) # When are all three rows filled winner
+
+for (j in 1:gameNum){
+print(j)
+plateNum <- 25 # Number of players
+draws <- sample(1:90, 90, replace = FALSE)
+matchTibble <- tibble(drawNum = 1:90,
+                      matchRowOne = logical(length = 90),
+                      matchRowTwo = logical(length = 90),
+                      matchRowThree = logical(length = 90))
+
+numForFirst <- numeric(plateNum) # When have one row been filled
+numForSecond <- numeric(plateNum) # When are two rows filled
+numForBingo <- numeric(plateNum) # When are all three rows filled
+
+for (i in 1:plateNum){
+  plate <- generateBankoPlate()
+  matchTibble$matchRowOne <-  (draws %in% plate[1, ])
+  matchTibble$matchRowTwo <- (draws %in% plate[2, ])
+  matchTibble$matchRowThree <- (draws %in% plate[3, ])
+  
+  numForRowOne <- matchTibble %>% filter(matchRowOne == TRUE) %>% .$drawNum %>% tail(n = 1)
+  numForRowTwo <- matchTibble %>% filter(matchRowTwo == TRUE) %>% .$drawNum %>% tail(n = 1)
+  numForRowThree <- matchTibble %>% filter(matchRowThree == TRUE) %>% .$drawNum %>% tail(n = 1)
+  
+  # Collect the indices
+  idxOfRow <- c(numForRowOne, numForRowTwo, numForRowThree)
+  
+  # Find the index for when the last and first row was found
+  # and then use that to find out when the second was found
+  numForBingo[i] <- max(idxOfRow)
+  numForFirst[i] <- min(idxOfRow)
+  numForSecond[i] <- dplyr::setdiff(idxOfRow, c(numForBingo[i], numForFirst[i]))
+}
+
+numForBingoWin[j] <- min(numForBingo)
+numForSecondWin[j] <- min(numForSecond)
+numForFirstWin[j] <- min(numForFirst)
+}
+
+# Gather information from numerical vectors in tibble
+resultWin <- tibble(oneRowWinner = numForFirstWin,
+                    twoRowsWinner = numForSecondWin,
+                    bingoWinner = numForBingoWin)
+
+# Winner information
+
+# Bingo distribution and mean
+ggplot(resultWin, aes(x = bingoWinner)) +
+  geom_bar(aes(y=..count../sum(..count..)), fill = "dodgerblue3", col = "black") +
+  xlab("Number of samples") + ylab("Probability")
+
+mean(resultWin$bingoWinner)
+
+# First row distribution and mean
+ggplot(resultWin, aes(x = oneRowWinner)) +
+  geom_bar(aes(y=..count../sum(..count..)), fill = "dodgerblue3", col = "black") +
+  xlab("Number of samples") + ylab("Probability")
+
+mean(resultWin$oneRowWinner)
+
+# Second row distribution and mean
+ggplot(resultWin, aes(x = twoRowsWinner)) +
+  geom_bar(aes(y=..count../sum(..count..)), fill = "dodgerblue3", col = "black") +
+  xlab("Number of samples") + ylab("Probability")
+
+mean(resultWin$twoRowsWinner)
